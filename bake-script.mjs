@@ -1,27 +1,29 @@
 import fs from 'fs';
 import { pipeline } from 'stream/promises';
 import yauzl from 'yauzl';
-import { chain } from 'stream-json';
 import { parser } from 'stream-json/Parser.js';
 import { pick } from 'stream-json/filters/Pick.js';
 import { streamArray } from 'stream-json/streamers/StreamArray.js';
+import { Batch } from 'stream-json/utils/Batch.js';
 
 const SOURCE_URL = 'https://mtgjson.com/api/v5/AllPrintings.json.zip';
-const OUTPUT_FILE = 'mana-scribe-index.json';
 const TEMP_ZIP = 'all-printings.zip';
+const OUTPUT_FILE = 'mana-scribe-index.json';
 
 async function bake() {
-    console.log('🚀 Starting Streaming Bakery...');
+    console.log('🚀 Starting Bulletproof Bakery...');
 
-    // 1. Download to temporary file (safest for huge files)
+    // 1. Download to temporary file
     const response = await fetch(SOURCE_URL);
-    const fileStream = fs.createWriteStream(TEMP_ZIP);
-    await pipeline(response.body, fileStream);
+    if (!response.ok) throw new Error(`Download failed: ${response.statusText}`);
+    await pipeline(response.body, fs.createWriteStream(TEMP_ZIP));
     console.log('📦 Download complete.');
 
+    const outStream = fs.createWriteStream(OUTPUT_FILE);
+    outStream.write('['); // Start JSON array
+    let first = true;
+
     // 2. Open Zip and Stream JSON
-    const flattenedCards = [];
-    
     await new Promise((resolve, reject) => {
         yauzl.open(TEMP_ZIP, { lazyEntries: true }, (err, zipfile) => {
             if (err) return reject(err);
@@ -32,18 +34,14 @@ async function bake() {
                 zipfile.openReadStream(entry, (err, readStream) => {
                     if (err) return reject(err);
 
-                    // This chain picks specific parts of the JSON without loading the whole thing
-                    const pipeline = chain([
-                        readStream,
-                        parser(),
-                        pick({ filter: /data\..*\.cards/ }), // Grabs cards from every set
-                        streamArray()
-                    ]);
+                    const jsonStream = readStream
+                        .pipe(parser())
+                        .pipe(pick({ filter: /data\..*\.cards/ }))
+                        .pipe(streamArray());
 
-                    pipeline.on('data', (data) => {
+                    jsonStream.on('data', (data) => {
                         const card = data.value;
-                        // Map only what the app needs
-                        flattenedCards.push({
+                        const simplified = {
                             id: card.uuid,
                             name: card.name,
                             mana_cost: card.manaCost || "",
@@ -57,20 +55,26 @@ async function bake() {
                             rarity: card.rarity,
                             scryfallId: card.identifiers?.scryfallId,
                             finishes: card.finishes || []
-                        });
+                        };
+
+                        if (!first) outStream.write(',');
+                        outStream.write(JSON.stringify(simplified));
+                        first = false;
                     });
 
-                    pipeline.on('end', () => resolve());
-                    pipeline.on('error', reject);
+                    jsonStream.on('end', () => {
+                        outStream.write(']');
+                        outStream.end();
+                        resolve();
+                    });
+                    jsonStream.on('error', reject);
                 });
             });
         });
     });
 
-    // 3. Save Final Result
-    fs.writeFileSync(OUTPUT_FILE, JSON.stringify(flattenedCards));
-    fs.unlinkSync(TEMP_ZIP); // Clean up
-    console.log(`✅ Success! Created ${OUTPUT_FILE} with ${flattenedCards.length} cards.`);
+    if (fs.existsSync(TEMP_ZIP)) fs.unlinkSync(TEMP_ZIP);
+    console.log(`✅ Success! Created ${OUTPUT_FILE}`);
 }
 
 bake().catch(err => {

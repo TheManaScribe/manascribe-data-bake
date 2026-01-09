@@ -1,33 +1,24 @@
 name: Daily Data Bake
-
 on:
   schedule:
     - cron: '0 4 * * *'
   workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   bake:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
       - name: Install Dependencies
         run: npm install
-
       - name: Run Bake Script
         run: node bake-script.mjs
-        env:
-          NODE_OPTIONS: "--max-old-space-size=6144" # Critical for large JSON
-
       - name: Update Release
         uses: softprops/action-gh-release@v1
         with:

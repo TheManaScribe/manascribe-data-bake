@@ -1,10 +1,9 @@
 {
   "name": "manascribe-data-bake",
   "type": "module",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "dependencies": {
     "yauzl": "^3.0.0",
-    "stream-json": "^1.9.1",
-    "stream-chain": "^3.0.0"
+    "stream-json": "^1.9.1"
   }
 }

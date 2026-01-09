@@ -1,0 +1,34 @@
+name: Daily Data Bake
+
+on:
+  schedule:
+    - cron: '0 4 * * *' # Runs at 4 AM UTC
+  workflow_dispatch: # Allows you to "Force Bake" manually
+
+permissions:
+  contents: write
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Bakery Script
+        run: node bake-script.mjs
+
+      - name: Update Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: latest
+          files: mana-scribe-index.json
+          name: "Latest Collector Index"
+          body: "Auto-generated index of all paper Magic printings."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

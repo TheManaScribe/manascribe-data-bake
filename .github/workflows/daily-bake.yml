@@ -2,8 +2,8 @@ name: Daily Data Bake
 
 on:
   schedule:
-    - cron: '0 4 * * *' # Runs at 4 AM UTC
-  workflow_dispatch: # Allows you to "Force Bake" manually
+    - cron: '0 4 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -20,8 +20,13 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Run Bakery Script
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run Bake Script
         run: node bake-script.mjs
+        env:
+          NODE_OPTIONS: "--max-old-space-size=6144" # Critical for large JSON
 
       - name: Update Release
         uses: softprops/action-gh-release@v1
@@ -29,6 +34,6 @@ jobs:
           tag_name: latest
           files: mana-scribe-index.json
           name: "Latest Collector Index"
-          body: "Auto-generated index of all paper Magic printings."
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

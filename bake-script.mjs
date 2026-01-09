@@ -1,70 +1,57 @@
 import fs from 'fs';
-import { Readable } from 'stream';
-import { finished } from 'stream/promises';
-import { createUnzip } from 'zlib';
+import AdmZip from 'adm-zip';
 
 const SOURCE_URL = 'https://mtgjson.com/api/v5/AllPrintings.json.zip';
 const OUTPUT_FILE = 'mana-scribe-index.json';
 
 async function bake() {
-    console.log('🚀 Starting the Bakery for ManaScribe...');
+    console.log('🚀 Starting the Bakery...');
 
+    // 1. Download as Buffer
+    console.log('📦 Downloading AllPrintings Zip...');
     const response = await fetch(SOURCE_URL);
     if (!response.ok) throw new Error(`Download failed: ${response.statusText}`);
-    
-    console.log('📦 Unzipping AllPrintings (Complete Collector Data)...');
-    const zipStream = Readable.fromWeb(response.body);
-    const unzip = createUnzip();
-    
-    let fullData = '';
-    unzip.on('data', chunk => fullData += chunk.toString());
-    zipStream.pipe(unzip);
+    const buffer = Buffer.from(await response.arrayBuffer());
 
-    await finished(unzip);
-    const mtgData = JSON.parse(fullData).data;
+    // 2. Extract using AdmZip
+    console.log('🔓 Extracting JSON...');
+    const zip = new AdmZip(buffer);
+    const jsonEntry = zip.getEntries().find(e => e.entryName.endsWith('.json'));
+    const mtgData = JSON.parse(jsonEntry.getData().toString('utf8')).data;
 
     const flattenedCards = [];
 
-    console.log('🔪 Mapping fields to match ManaScribe App Code...');
+    console.log('🔪 Flattening and mapping fields...');
     for (const setCode in mtgData) {
         const set = mtgData[setCode];
-        
-        // We only process 'paper' sets to keep the file size smaller for mobile
-        if (set.isOnlineOnly) continue; 
+        if (set.isOnlineOnly) continue; // Skip digital-only cards
 
         for (const card of set.cards) {
             flattenedCards.push({
-                // Primary Search Fields (Matches your search UI)
-                id: card.uuid, 
+                id: card.uuid, // Local Unique ID
                 name: card.name,
-                mana_cost: card.manaCost || "", // Mapped for your existing Display logic
-                cmc: card.manaValue, 
-                
-                // Type Builder Fields (Directly from MTGJSON arrays)
+                mana_cost: card.manaCost || "",
+                cmc: card.manaValue || 0,
                 type_line: card.type,
+                // Pre-split types for your Type Builder
                 supertypes: card.supertypes || [],
                 types: card.types || [],
                 subtypes: card.subtypes || [],
-
-                // Collector Specific Fields
+                // Collector Data
                 set: set.code.toLowerCase(),
                 set_name: set.name,
                 collector_number: card.number,
                 rarity: card.rarity,
                 artist: card.artist,
-                
-                // The "Golden Key" for Scryfall Hybrid Images
+                // Image Key
                 scryfallId: card.identifiers?.scryfallId,
-                
-                // Finishes for the "Collector Experience"
-                finishes: card.finishes, // ['foil', 'nonfoil', etc]
-                isPromo: card.isPromo || false
+                finishes: card.finishes || []
             });
         }
     }
 
     fs.writeFileSync(OUTPUT_FILE, JSON.stringify(flattenedCards));
-    console.log(`✅ Success! ${flattenedCards.length} printings baked into ${OUTPUT_FILE}.`);
+    console.log(`✅ Success! Created ${OUTPUT_FILE} with ${flattenedCards.length} printings.`);
 }
 
 bake().catch(err => {

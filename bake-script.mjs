@@ -49,6 +49,7 @@ async function bake() {
                                 name: card.name,
                                 mana_cost: card.manaCost || "",
                                 cmc: card.manaValue || 0,
+                                colors: card.colors || [],
                                 type_line: card.type,
                                 supertypes: card.supertypes || [],
                                 types: card.types || [],

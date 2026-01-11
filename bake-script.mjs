@@ -132,8 +132,9 @@ async function bake() {
 
                     jsonStream.on('end', () => {
                         outStream.write(']');
-                        outStream.end();
-                        resolve();
+                        outStream.end(() => {
+                            resolve();
+                        });
                     });
 
                     jsonStream.on('error', reject);

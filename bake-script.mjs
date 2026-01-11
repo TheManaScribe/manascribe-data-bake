@@ -1,6 +1,7 @@
 // 1. GLOBAL POLYFILLS (Must be at the very top)
 // This "fakes" the browser environment for libraries that expect it
 import { indexedDB, IDBKeyRange } from 'fake-indexeddb';
+import FileReader from '@lyleunderwood/filereader-polyfill';
 global.indexedDB = indexedDB;
 global.IDBKeyRange = IDBKeyRange;
 global.FileReader = FileReader;

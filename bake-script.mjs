@@ -1,3 +1,8 @@
+// 1. GLOBAL POLYFILLS (Must be at the very top)
+global.self = global;
+global.window = global;
+global.Blob = await import('node:buffer').then(m => m.Blob);
+
 import fs from 'fs';
 import { pipeline } from 'stream/promises';
 import yauzl from 'yauzl';
@@ -7,6 +12,11 @@ import StreamJsonObject from 'stream-json/streamers/StreamObject.js';
 import { Dexie } from 'dexie';
 import 'fake-indexeddb/auto';
 import { exportDB } from 'dexie-export-import';
+
+// 1. GLOBAL POLYFILLS (Must be at the very top)
+global.self = global;
+global.window = global;
+global.Blob = await import('node:buffer').then(m => m.Blob);
 
 const SOURCE_URL = 'https://mtgjson.com/api/v5/AllPrintings.json.zip';
 const TEMP_ZIP = 'all-printings.zip';

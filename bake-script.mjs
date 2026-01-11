@@ -1,4 +1,8 @@
 // 1. GLOBAL POLYFILLS (Must be at the very top)
+// This "fakes" the browser environment for libraries that expect it
+import { indexedDB, IDBKeyRange } from 'fake-indexeddb';
+global.indexedDB = indexedDB;
+global.IDBKeyRange = IDBKeyRange;
 global.self = global;
 global.window = global;
 global.Blob = await import('node:buffer').then(m => m.Blob);
@@ -10,7 +14,7 @@ import StreamJsonParser from 'stream-json/Parser.js';
 import StreamJsonPick from 'stream-json/filters/Pick.js';
 import StreamJsonObject from 'stream-json/streamers/StreamObject.js';
 import { Dexie } from 'dexie';
-import 'fake-indexeddb/auto';
+
 
 const SOURCE_URL = 'https://mtgjson.com/api/v5/AllPrintings.json.zip';
 const TEMP_ZIP = 'all-printings.zip';
@@ -23,19 +27,25 @@ async function createDexieBundle(jsonDataPath) {
     console.log('🏗️  Building Dexie Binary Bundle...');
     
     // Initialize the DB
-    const db = new Dexie('ManaScribeDB');
+    // 2. Explicitly provide the fake IndexedDB to Dexie
+    const db = new Dexie('ManaScribeDB', {
+        indexedDB: indexedDB,
+        IDBKeyRange: IDBKeyRange
+    });
     db.version(1).stores({
         cards: 'id, name, cmc, *colors, *colorIdentity, set, scryfallId, *types, *subtypes, *supertypes, rarity, artist, power, toughness, loyalty, defense, life, language, isReprint, isPromo, isReserved, hasFoil, hasNonFoil, frameVersion, originalReleaseDate, collector_number, *finishes, *printings, *promoTypes'
     });
 
     // Load the JSON you just wrote
+    console.log('📖 Reading baked JSON...');
     const rawData = fs.readFileSync(jsonDataPath, 'utf8');
     const cards = JSON.parse(rawData);
 
     // Pour data into the fake IndexedDB
     await db.open();
+    console.log('📥 Pouring data into Dexie (this may take a moment)...');
     await db.cards.bulkAdd(cards);
-    console.log('✅ Data poured into Fake-IndexedDB.');
+    console.log('✅ Data poured. Starting Binary Export...');
 
     // Export to Binary
     const blob = await exportDB(db);
@@ -46,6 +56,9 @@ async function createDexieBundle(jsonDataPath) {
     
     fs.writeFileSync('mana-scribe-master.db', buffer);
     console.log('📦 MASTER DB CREATED: mana-scribe-master.db');
+    
+    // Close the DB to free up memory
+    db.close();
 }
 
 async function bake() {

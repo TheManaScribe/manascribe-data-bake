@@ -23,8 +23,11 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: latest
-          files: mana-scribe-index.json
+          files: |
+            mana-scribe-index.json
+            mana-scribe-master.db
           name: "Latest Collector Index"
+          body: "Automated daily bake of MTGJSON data into JSON and Dexie formats."
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

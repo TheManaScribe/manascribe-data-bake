@@ -3,6 +3,7 @@
   "type": "module",
   "version": "1.1.1",
   "dependencies": {
+    "@lyleunderwood/filereader-polyfill": "^1.0.0",
     "yauzl": "^3.0.0",
     "stream-json": "^1.9.1",
     "dexie": "^4.0.8",

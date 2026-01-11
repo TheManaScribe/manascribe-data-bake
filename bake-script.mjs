@@ -11,18 +11,15 @@ import StreamJsonPick from 'stream-json/filters/Pick.js';
 import StreamJsonObject from 'stream-json/streamers/StreamObject.js';
 import { Dexie } from 'dexie';
 import 'fake-indexeddb/auto';
-import { exportDB } from 'dexie-export-import';
-
-// 1. GLOBAL POLYFILLS (Must be at the very top)
-global.self = global;
-global.window = global;
-global.Blob = await import('node:buffer').then(m => m.Blob);
 
 const SOURCE_URL = 'https://mtgjson.com/api/v5/AllPrintings.json.zip';
 const TEMP_ZIP = 'all-printings.zip';
 const OUTPUT_FILE = 'mana-scribe-index.json';
 
 async function createDexieBundle(jsonDataPath) {
+    // Import dynamically to ensure global polyfills are applied first
+    const { exportDB } = await import('dexie-export-import');
+
     console.log('🏗️  Building Dexie Binary Bundle...');
     
     // Initialize the DB

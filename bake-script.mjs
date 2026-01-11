@@ -3,6 +3,7 @@
 import { indexedDB, IDBKeyRange } from 'fake-indexeddb';
 global.indexedDB = indexedDB;
 global.IDBKeyRange = IDBKeyRange;
+global.FileReader = FileReader;
 global.self = global;
 global.window = global;
 global.Blob = await import('node:buffer').then(m => m.Blob);

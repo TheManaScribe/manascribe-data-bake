@@ -1,5 +1,3 @@
-// 1. Polyfill the environment for Node.js
-global.self = global;
 import fs from 'fs';
 import { pipeline } from 'stream/promises';
 import yauzl from 'yauzl';
@@ -17,24 +15,28 @@ const OUTPUT_FILE = 'mana-scribe-index.json';
 async function createDexieBundle(jsonDataPath) {
     console.log('🏗️  Building Dexie Binary Bundle...');
     
-    // 1. Initialize a "Fake" Dexie instance
+    // Initialize the DB
     const db = new Dexie('ManaScribeDB');
     db.version(1).stores({
         cards: 'id, name, cmc, *colors, *colorIdentity, set, scryfallId, *types, *subtypes, *supertypes, rarity, artist, power, toughness, loyalty, defense, life, language, isReprint, isPromo, isReserved, hasFoil, hasNonFoil, frameVersion, originalReleaseDate, collector_number, *finishes, *printings, *promoTypes'
     });
 
-    // 2. Load your newly baked JSON
-    const cards = JSON.parse(fs.readFileSync(jsonDataPath, 'utf8'));
+    // Load the JSON you just wrote
+    const rawData = fs.readFileSync(jsonDataPath, 'utf8');
+    const cards = JSON.parse(rawData);
 
-    // 3. Bulk Add to the fake DB
+    // Pour data into the fake IndexedDB
+    await db.open();
     await db.cards.bulkAdd(cards);
-    console.log('✅ Data poured into Dexie.');
+    console.log('✅ Data poured into Fake-IndexedDB.');
 
-    // 4. Export to a Buffer
+    // Export to Binary
     const blob = await exportDB(db);
-    const buffer = Buffer.from(await blob.arrayBuffer());
     
-    // 5. Save the binary file
+    // In Node, we convert the Blob to a Buffer to save to disk
+    const arrayBuffer = await blob.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
     fs.writeFileSync('mana-scribe-master.db', buffer);
     console.log('📦 MASTER DB CREATED: mana-scribe-master.db');
 }

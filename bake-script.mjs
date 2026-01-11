@@ -2,6 +2,7 @@
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const FileReader = require('@lyleunderwood/filereader-polyfill');
+const FileReader = FileReaderPolyfill.FileReader || FileReaderPolyfill;
 
 // 1. GLOBAL POLYFILLS (Must be at the very top)
 // This "fakes" the browser environment for libraries that expect it

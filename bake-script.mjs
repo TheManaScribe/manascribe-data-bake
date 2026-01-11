@@ -2,14 +2,14 @@
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const FileReader = require('@lyleunderwood/filereader-polyfill');
-const FileReader = FileReaderPolyfill.FileReader || FileReaderPolyfill;
+const FR_CONSTRUCTOR = polyfill.FileReader || polyfill;
 
 // 1. GLOBAL POLYFILLS (Must be at the very top)
 // This "fakes" the browser environment for libraries that expect it
 import { indexedDB, IDBKeyRange } from 'fake-indexeddb';
 global.indexedDB = indexedDB;
 global.IDBKeyRange = IDBKeyRange;
-global.FileReader = FileReader;
+global.FileReader = FR_CONSTRUCTOR;
 global.self = global;
 global.window = global;
 global.Blob = await import('node:buffer').then(m => m.Blob);

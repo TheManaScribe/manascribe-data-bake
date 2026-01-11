@@ -4,10 +4,38 @@ import yauzl from 'yauzl';
 import StreamJsonParser from 'stream-json/Parser.js';
 import StreamJsonPick from 'stream-json/filters/Pick.js';
 import StreamJsonObject from 'stream-json/streamers/StreamObject.js';
+import { Dexie } from 'dexie';
+import 'fake-indexeddb/auto';
+import { exportDB } from 'dexie-export-import';
 
 const SOURCE_URL = 'https://mtgjson.com/api/v5/AllPrintings.json.zip';
 const TEMP_ZIP = 'all-printings.zip';
 const OUTPUT_FILE = 'mana-scribe-index.json';
+
+async function createDexieBundle(jsonDataPath) {
+    console.log('🏗️  Building Dexie Binary Bundle...');
+    
+    // 1. Initialize a "Fake" Dexie instance
+    const db = new Dexie('ManaScribeDB');
+    db.version(1).stores({
+        cards: 'id, name, cmc, *colors, *colorIdentity, set, scryfallId, *types, *subtypes, *supertypes, rarity, artist, power, toughness, loyalty, defense, life, language, isReprint, isPromo, isReserved, hasFoil, hasNonFoil, frameVersion, originalReleaseDate, collector_number, *finishes, *printings, *promoTypes'
+    });
+
+    // 2. Load your newly baked JSON
+    const cards = JSON.parse(fs.readFileSync(jsonDataPath, 'utf8'));
+
+    // 3. Bulk Add to the fake DB
+    await db.cards.bulkAdd(cards);
+    console.log('✅ Data poured into Dexie.');
+
+    // 4. Export to a Buffer
+    const blob = await exportDB(db);
+    const buffer = Buffer.from(await blob.arrayBuffer());
+    
+    // 5. Save the binary file
+    fs.writeFileSync('mana-scribe-master.db', buffer);
+    console.log('📦 MASTER DB CREATED: mana-scribe-master.db');
+}
 
 async function bake() {
     console.log('🚀 Starting Object-Aware Streaming Bakery...');
@@ -116,6 +144,8 @@ async function bake() {
 
     if (fs.existsSync(TEMP_ZIP)) fs.unlinkSync(TEMP_ZIP);
     console.log(`✅ Success! Baked ${cardCount} cards into ${OUTPUT_FILE}`);
+
+    await createDexieBundle(OUTPUT_FILE);
 }
 
 bake().catch(err => {

@@ -1,3 +1,5 @@
+// 1. Polyfill the environment for Node.js
+global.self = global;
 import fs from 'fs';
 import { pipeline } from 'stream/promises';
 import yauzl from 'yauzl';
